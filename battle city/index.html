@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <style type="text/css">
+      .game-container {background-color: #000; height: 600px; position: relative; width: 800px; left:200px; top:100px;}
+      #wrapper{width: 1200px; height:800px; background: gray; position: relative;}
+      .game-resources {display: none;}
+      canvas {position: absolute; width: 800px; height: 600px;}
+      #score{width: 200px; height: 600px; position: absolute; top: 100px; right: 0;}
+      #score input{width: 60px; height: 60px; font:bold 20px "宋体"; background: gray; text-align: center;  border: none; margin: 0 70px 50px;}
+      #score img{margin: 0 87px;}
+    </style>
+    <script src="main.js"></script>
+  </head>
+  <body>
+    <audio id= "shoot" src="sounds/shoot.ogg">不支持此audio标签</audio>
+    <audio id= "eexplosion" src="sounds/eexplosion.ogg">不支持此audio标签</audio>
+    <audio id= "steelhit" src="sounds/steelhit.ogg">不支持此audio标签</audio>
+    <audio id= "brickhit" src="sounds/brickhit.ogg">不支持此audio标签</audio>
+    <audio id= "fexplosion" src="sounds/fexplosion.ogg">不支持此audio标签</audio>
+    <audio id= "moving" src="sounds/moving.ogg">不支持此audio标签</audio>
+    <image id="game_resources" class="game-resources" src="resources/graphics.png"/>
+    <div id= "wrapper">
+      <div id="container" class="game-container"></div>
+      <div id="score">
+        <img src="resources/img1.png" alt="图片加载失败">
+        <input  id="enemy_number" type="text" value= '20'>
+        <img src="resources/img2.png" alt="图片加载失败">
+        <input  id="enemy_number" type="text" value= '3'>
+      </div>
+    </div>
+  </body>
+  <script type="text/javascript">
+    var enemy_number =20;
+    var BattleCity = function () {
+      var GAME_RESOURCES = document.getElementById('game_resources'),
+          GAMESTATE = {
+            RESET: 0,
+            RUNNING1PLAYER: 1,
+            RUNNING2PLAYER: 2,
+            ENDED: 3
+          },
+          CONTROL_KEY = {
+            W: 87,
+            S: 83,
+            A: 65,
+            D: 68,
+            F: 70,
+            UP: 38,
+            DOWN: 40,
+            LEFT: 37,
+            RIGHT: 39,
+            RCTRL: 17
+          },
+          TANK_TYPE = {
+            PLAYER0: {
+              type: 'PLAYER0',
+              dimension: [30, 30],
+              image_coordinates: [641, 1, 641, 33]
+            },
+            PLAYER1: {
+              type: 'PLAYER1',
+              dimension: [30, 30],
+              image_coordinates: [769, 1, 769, 33]
+            },
+            ENEMY0: {
+              type: 'ENEMY1',
+              dimension: [30, 30],
+              image_coordinates: [129, 1, 129, 33]
+            },
+            ENEMY1: 3,
+            ENEMY2: 4,
+            ENEMY3: 5
+          },
+          MISSILE_TYPE = {
+            NORMAL: {
+              'type': 'normal',
+              dimension: [6, 8],
+              image_coordinates: [293, 288]
+            },
+            PLAYER0: {
+              'type': 'PLAYER0',
+              dimension: [6, 8],
+              image_coordinates: [293, 288]
+            }
+          },
+          EAGLE_TYPE = {
+            NORMAL: {
+              'type': 'normal',
+              dimension: [32, 28],
+              image_coordinates: [896, 66]
+            }
+          },
+          BLOCK_TYPE = {
+            BLOCK_BRICK: {
+              'type': 'normal',
+              dimension: [16, 16],
+              image_coordinates: [896, 0]
+            },
+            BLOCK_STONE: {
+              'type': 'normal',
+              dimension: [16, 16],
+              image_coordinates: [896, 16]
+            }
+          },
+          TANK_EXPLOSION_FRAME = [
+            {dimension: [22, 22], image_coordinates: [233, 261]},
+            {dimension: [28, 28], image_coordinates: [263, 258]},
+            {dimension: [32, 32], image_coordinates: [292, 256]},
+            {dimension: [32, 32], image_coordinates: [292, 256]},
+            {dimension: [28, 28], image_coordinates: [263, 258]},
+            {dimension: [22, 22], image_coordinates: [233, 261]}
+          ],
+          TANK_STAR_FRAME = [
+            {dimension: [18, 18], image_coordinates: [235, 327]},
+            {dimension: [22, 22], image_coordinates: [265, 325]},
+            {dimension: [26, 26], image_coordinates: [295, 323]},
+            {dimension: [30, 30], image_coordinates: [325, 321]},
+            {dimension: [26, 26], image_coordinates: [359, 323]},
+            {dimension: [22, 22], image_coordinates: [395, 325]},
+            {dimension: [18, 18], image_coordinates: [427, 327]},
+            {dimension: [22, 22], image_coordinates: [457, 325]},
+            {dimension: [26, 26], image_coordinates: [487, 323]},
+            {dimension: [30, 30], image_coordinates: [517, 321]},
+            {dimension: [18, 18], image_coordinates: [235, 327]},
+            {dimension: [22, 22], image_coordinates: [265, 325]},
+            {dimension: [26, 26], image_coordinates: [295, 323]},
+            {dimension: [30, 30], image_coordinates: [325, 321]},
+            {dimension: [26, 26], image_coordinates: [359, 323]},
+            {dimension: [22, 22], image_coordinates: [395, 325]},
+            {dimension: [18, 18], image_coordinates: [427, 327]},
+            {dimension: [22, 22], image_coordinates: [457, 325]},
+            {dimension: [26, 26], image_coordinates: [487, 323]},
+            {dimension: [30, 30], image_coordinates: [517, 321]},
+          ],
+          TANK_ANCTION = {
+            W: 1,
+            S: 2,
+            A: 4,
+            D: 8,
+            F: 16,
+            UP: 32,
+            DOWN: 64,
+            LEFT: 128,
+            RIGHT: 256,
+            RCTRL: 512,
+          },
+          TANK_LEVEL = {
+            LEVEL0: 0,
+            LEVEL1: 1,
+            LEVEL2: 2,
+            LEVEL3: 3
+          },
+          WIDTH,
+          HEIGHT,
+          TANK_SPEED = 4,
+          MISSILE_SPEED =10,
+          _game_status = GAMESTATE.RESET,
+          layer_bg = new Canvas(),
+          layer_sprites = new Canvas(),
+          tank_player_0,
+          tank_player_1,
+          eagle,
+          enemy_tanks = [],
+          block_wall = [],
+          sprites = {},
+          pre_action = 0;
+
+      var MissileConfig = function (cfg) {
+        this.x = cfg.x;
+        this.y = cfg.y;
+        this.type = cfg.type || MISSILE_TYPE.NORMAL;
+        this.width = cfg.width || this.type.dimension[0];
+        this.height = cfg.height || this.type.dimension[1];
+        this.direction = cfg.direction || DIRECTION.UP;
+        this.is_from_player = cfg.is_from_player;
+        this.out_of_border_die  = cfg.out_of_border_die || 1; // 判断边界类型
+        this.border_x = cfg.border_x || 0;
+        this.border_y = cfg.border_y || 0;
+        this.speed = cfg.speed || TANK_SPEED;
+        this.alive = cfg.alive || 1;
+      }
+
+      var Missile = function (MissileConfig) {
+        var x = MissileConfig.x;
+        var y = MissileConfig.y;
+        var width = MissileConfig.width;
+        var height = MissileConfig.width;
+        var direction = MissileConfig.direction;
+        this.type = MissileConfig.type;
+        this.is_from_player = MissileConfig.is_from_player || 0;
+        var explosion_count = 0;
+
+        CanvasSprite.apply(this, [{alive: 1, out_of_border_die: 1, border_y: HEIGHT, border_x: WIDTH, speed: MISSILE_SPEED, direction: direction, x: x, y: y, width: width, height: height}]);
+
+        this.isDestroied = function () {
+          return (explosion_count > 0);
+        };
+
+        this.explode = function () {
+
+          if((explosion_count++) === 5){
+            this.alive = 0;
+          }
+        };
+
+        this.getImg = function () {
+
+          if(explosion_count > 0) {
+            return {
+              width: TANK_EXPLOSION_FRAME[explosion_count].dimension[0],
+              height: TANK_EXPLOSION_FRAME[explosion_count].dimension[1],
+              offset_x: TANK_EXPLOSION_FRAME[explosion_count].image_coordinates[0],
+              offset_y: TANK_EXPLOSION_FRAME[explosion_count].image_coordinates[1]
+            };
+          }
+          else{
+            return {
+              width: width,
+              height: height,
+              offset_x: this.type.image_coordinates[0],
+              offset_y: this.type.image_coordinates[1]
+            };
+          }
+        };
+        
+        this.getHeadCoordinates = function () {
+          var h_x, h_y;
+
+          switch(this.direction) {
+            case DIRECTION.UP:
+              h_x = this.x + this.width/2 - this.type.dimension[0]/2;
+              h_y = this.y - this.type.dimension[1]/2;
+              break;
+            case DIRECTION.DOWN:
+              h_x = this.x + this.width/2 - this.type.dimension[0]/2;
+              h_y = this.y + this.height - this.type.dimension[1]/2;
+              break;
+            case DIRECTION.LEFT:
+              h_x = this.x;
+              h_y = this.y + this.width/2 - this.type.dimension[0]/2;
+              break;
+            case DIRECTION.RIGHT:
+              h_x = this.x + this.height;
+              h_y = this.y + this.width/2 - this.type.dimension[0]/2;
+          }
+
+          return {
+            x: h_x,
+            y: h_y
+          };
+        };
+
+        this._generateId = function () {
+          return uuidv4();
+        };
+        sprites[this._generateId()] = this;
+      };
+
+      var TankConfig = function (cfg) {
+
+        this.explosion_count = cfg.explosion_count;
+        this.width = cfg.type.dimension[0];
+        this.height = cfg.type.dimension[1];
+        this.missle_type = cfg.missle_type || MISSILE_TYPE.NORMAL;
+        this.x = cfg.x || 0;
+        this.y = cfg.y || 0;
+        this.direction = cfg.direction || DIRECTION.UP;
+        this.is_player = cfg.is_player || 0;
+        this.moving = cfg.moving || 0;
+        this.alive = cfg.alive || 1;
+        this.border_x = cfg.border_x || 0;
+        this.border_y = cfg.border_y || 0;
+        this.speed = cfg.speed ||TANK_SPEED;
+        this.direction = cfg.direction || DIRECTION.UP;
+        this.type = cfg.type || TANK_TYPE.PLAYER0;
+      }
+  
+      var Tank = function (TankConfig) {
+
+        var moving = 0;
+        var alive = 1;
+        var explosion_count = 0;
+        var star_count = 0;
+        var width = TankConfig.width;
+        var height = TankConfig.height;
+        this.missle_type = MISSILE_TYPE.NORMAL;
+        this.x = TankConfig.x || 0;
+        this.y = TankConfig.y || 0;
+        this.type = TankConfig.type;
+        this.direction = TankConfig.direction || DIRECTION.UP;
+        this.is_player = TankConfig.is_player || 0;
+
+        CanvasSprite.apply(this, [{alive: 1,  border_y: HEIGHT, border_x: WIDTH, speed: TANK_SPEED, direction: this.direction, x: this.x, y: this.y, width: width, height: height}]);
+
+        this.dir = function () {
+
+            if(Math.floor(Math.random()*10) === 0 || Math.floor(Math.random()*10) === 1) {
+              this.direction = DIRECTION.UP;
+            };
+            if(Math.floor(Math.random()*10) === 2 || Math.floor(Math.random()*10) === 3) {
+              this.direction = DIRECTION.DOWN;
+            };
+            if(Math.floor(Math.random()*10) === 4 || Math.floor(Math.random()*10) === 5) {
+              this.direction = DIRECTION.LEFT;
+            };
+            if(Math.floor(Math.random()*10) === 6 || Math.floor(Math.random()*10) === 7) {
+              this.direction = DIRECTION.RIGHT;
+            };
+            if(Math.floor(Math.random()*10) === 8 || Math.floor(Math.random()*10) === 9) {
+              this.dir();
+            }
+          }
+
+        this.isDestroied = function () {
+          return (explosion_count > 0);
+        };
+
+        this.explode = function (d, ) {
+          
+          if((explosion_count++) === 5){
+            this.alive = 0;
+          }
+        };
+
+        this.isStared = function () {
+          return (star_count > 0);
+        };
+
+        this.star = function (d, ) {
+          
+          if((star_count++) === 18){
+            star_count = 0;
+          }
+        };
+
+        this.setMoveStatus = function () {
+          moving = !moving;
+        };
+
+        this.emove = function (d, obstacle_sprites) {
+
+          this.direction = d;
+          switch(d) {
+          case DIRECTION.UP:
+              if((obstacle_sprites && !this.checkRangeOverlap(obstacle_sprites))|| (!obstacle_sprites)) {
+
+                  this.y -= this.speed;
+
+                  if(this.y <= 10) {
+                      this.dir();
+                  };
+              }else {
+                this.dir();
+              }
+              break;
+          case DIRECTION.DOWN:
+              if((obstacle_sprites && !this.checkRangeOverlap(obstacle_sprites)) || (!obstacle_sprites)) {
+                  this.y += this.speed;
+
+                  if(this.y + this.height >= (this.border_y-30)) {
+                    this.dir();
+                  }
+              }else {
+                this.dir();
+              }
+              break;
+          case DIRECTION.LEFT:
+              if((obstacle_sprites && !this.checkRangeOverlap(obstacle_sprites)) || (!obstacle_sprites)) {
+                  this.x -= this.speed;
+                  if(this.x <= 10) {
+                      this.dir();
+                  }
+              }else {
+                this.dir();
+              }
+              break;
+          case DIRECTION.RIGHT:
+              if((obstacle_sprites && !this.checkRangeOverlap(obstacle_sprites)) || (!obstacle_sprites)) {
+                  this.x += this.speed;
+                  if(this.x + this.width >= this.border_x-30) {
+                      this.dir();
+                  }
+              }else {
+                this.dir();
+              }
+              break;
+          }
+        };
+
+        this.getImg = function () {
+
+          if(star_count > 0) {
+            return {
+              width: TANK_STAR_FRAME[star_count].dimension[0],
+              height: TANK_STAR_FRAME[star_count].dimension[1],
+              offset_x: TANK_STAR_FRAME[star_count].image_coordinates[0],
+              offset_y: TANK_STAR_FRAME[star_count].image_coordinates[1]
+            };
+          }
+
+          if(explosion_count > 0) {
+            return {
+              width: TANK_EXPLOSION_FRAME[explosion_count].dimension[0],
+              height: TANK_EXPLOSION_FRAME[explosion_count].dimension[1],
+              offset_x: TANK_EXPLOSION_FRAME[explosion_count].image_coordinates[0],
+              offset_y: TANK_EXPLOSION_FRAME[explosion_count].image_coordinates[1]
+            };
+          }
+          else{
+            return {
+              width: width,
+              height: height,
+              offset_x: moving?this.type.image_coordinates[0]:this.type.image_coordinates[2],
+              offset_y: moving?this.type.image_coordinates[1]:this.type.image_coordinates[3]
+            };
+          }
+        };
+
+        this.getCannonCoordinates = function () {
+          var c_x, c_y;
+
+          switch(this.direction) {
+            case DIRECTION.UP:
+              c_x = this.x + this.width/2 - this.missle_type.dimension[0]/2;
+              c_y = this.y - this.missle_type.dimension[1]/2;
+              break;
+            case DIRECTION.DOWN:
+              c_x = this.x + this.width/2 - this.missle_type.dimension[0]/2;
+              c_y = this.y + this.height - this.missle_type.dimension[1]/2;
+              break;
+            case DIRECTION.LEFT:
+              c_x = this.x;
+              c_y = this.y + this.width/2 - this.missle_type.dimension[0]/2;
+              break;
+            case DIRECTION.RIGHT:
+              c_x = this.x + this.height;
+              c_y = this.y + this.width/2 - this.missle_type.dimension[0]/2;
+          };
+          return {
+            x: c_x,
+            y: c_y
+          };
+        };
+
+        this.fire = function (boolean_type) {
+
+          if(!this.missle || !this.missle.alive) {
+            var coor = this.getCannonCoordinates();
+            this.missle = new Missile(new MissileConfig ({
+              x: coor.x,
+              y: coor.y,
+              direction: this.direction,
+              type: this.miss_type,
+              is_from_player: boolean_type
+            }));
+
+            if(boolean_type) {
+              document.getElementById("shoot").play();
+            }
+          }
+        };    
+
+        this._generateId = function () {
+          return uuidv4();
+        };
+        sprites[this._generateId()] = this;
+      };
+     
+      var Eagle = function (x, y, direction, type) {
+        type = type || EAGLE_TYPE.NORMAL;
+        var alive = 1;
+        var width = type.dimension[0];
+        var height = type.dimension[1];
+        var explosion_count = 0;
+        this.x = x;
+        this.y = y;
+        this.genre = 'eagle';
+        this.direction = direction || DIRECTION.UP;
+
+       CanvasSprite.apply(this, [{alive: 1, border_y: HEIGHT, border_x: WIDTH, speed: 0, direction: direction, x: x, y: y, width: width, height: height}]);
+
+       this.isDestroied = function () {
+          return (explosion_count > 0);
+        };
+
+        this.explode = function () {
+          
+          if((explosion_count++) === 5){
+            this.alive = 0;
+          };
+        }
+
+       this.getImg = function () {
+
+          if(explosion_count > 0) {
+            return {
+              width: TANK_EXPLOSION_FRAME[explosion_count].dimension[0],
+              height: TANK_EXPLOSION_FRAME[explosion_count].dimension[1],
+              offset_x: TANK_EXPLOSION_FRAME[explosion_count].image_coordinates[0],
+              offset_y: TANK_EXPLOSION_FRAME[explosion_count].image_coordinates[1]
+            };
+          }
+          else{
+            return {
+              width: width,
+              height: height,
+              offset_x: type.image_coordinates[0],
+              offset_y: type.image_coordinates[1]
+            };
+          }
+        };
+
+        this._generateId = function () {
+          return uuidv4();
+        };
+
+        sprites[this._generateId()] = this;
+      };
+
+      var Block = function (x, y, direction, type) {
+        type = type || BLOCK_TYPE.BLOCK_BRICK;
+        var alive = 1;
+        var width = type.dimension[0];
+        var height = type.dimension[1];
+        var explosion_count = 0;
+        this.type = type;
+
+        this.x = x;
+        this.y = y;
+        this.genre = 'block';
+        this.direction = direction || DIRECTION.UP;
+
+       CanvasSprite.apply(this, [{alive: 1, border_y: HEIGHT, border_x: WIDTH, speed: 0, direction: direction, x: x, y: y, width: width, height: height}]);
+
+        this.isDestroied = function () {
+          return (explosion_count > 0);
+        };
+
+        this.explode = function () {
+
+          if((explosion_count++) === 5){
+            this.alive = 0;
+          }
+        };
+
+       this.getImg = function () {
+          if(explosion_count > 0) {
+            return {
+              width: TANK_EXPLOSION_FRAME[explosion_count].dimension[0],
+              height: TANK_EXPLOSION_FRAME[explosion_count].dimension[1],
+              offset_x: TANK_EXPLOSION_FRAME[explosion_count].image_coordinates[0],
+              offset_y: TANK_EXPLOSION_FRAME[explosion_count].image_coordinates[1]
+            };
+          }
+          else{
+            return {
+              width: width,
+              height: height,
+              offset_x: type.image_coordinates[0],
+              offset_y: type.image_coordinates[1]
+            };
+          }
+        };
+
+        this._generateId = function () {
+          return uuidv4();
+        };
+
+        sprites[this._generateId()] = this;
+      };
+
+      // 初始化
+      this.init = function (container_id) {
+
+        // 容器尺寸
+        WIDTH = document.getElementById(container_id).clientWidth;
+        HEIGHT = document.getElementById(container_id).clientHeight;
+
+        layer_bg.renderTo(container_id);// 增加新背景层画布,插入container_id作为子节点
+
+        layer_sprites.renderTo(container_id);// 同上，精灵层画布
+
+        Missile.prototype = new CanvasSprite({}); // CanvasSprite的属性方法给到Missile
+
+        // 定义Missile的draw方法，如果不定义，则继承CanvasUIObject的throw 'Function not implemented.';
+        Missile.prototype.draw = function () {
+
+          var img = this.getImg();
+          this.move(this.direction);
+          layer_sprites.drawImageSlice(GAME_RESOURCES, img.offset_x, img.offset_y, img.width, img.height, this.x, this.y, this.direction);
+        };
+
+        Tank.prototype = new CanvasSprite({});
+
+        Tank.prototype.draw = function () {
+          this.emove(this.direction, sprites);
+          this.setMoveStatus(1);
+          this.fire(0);
+          var img = this.getImg();
+          layer_sprites.drawImageSlice(GAME_RESOURCES, img.offset_x, img.offset_y, img.width, img.height, this.x, this.y, this.direction);
+        };
+
+        Eagle.prototype = new CanvasSprite({});
+
+        Eagle.prototype.draw = function () {
+
+          var img = this.getImg();
+          layer_sprites.drawImageSlice(GAME_RESOURCES, img.offset_x, img.offset_y, img.width, img.height, this.x, this.y, this.direction);
+        };
+
+        Block.prototype = new CanvasSprite({});
+
+        Block.prototype.draw = function () {
+
+          this.move(this.direction);
+          var img = this.getImg();
+          layer_sprites.drawImageSlice(GAME_RESOURCES, img.offset_x, img.offset_y, img.width, img.height, this.x, this.y, this.direction);
+        };
+
+        tank_player_0 = new Tank(new TankConfig({
+          x: 250,
+          y: 560,
+          direction: DIRECTION.UP,
+          type: TANK_TYPE.PLAYER0,
+          is_player: 1
+        }));
+
+        tank_player_1 = new Tank(new TankConfig({
+          x: 510,
+          y: 560,
+          direction: DIRECTION.UP,
+          type: TANK_TYPE.PLAYER1,
+          is_player: 1
+        }));
+
+        tank_player_0.star();
+        tank_player_1.star();
+
+        tank_player_0.draw = function () {
+
+          var img = this.getImg();
+          switch (pre_action) {
+            case TANK_ANCTION.W:
+              tank_player_0.move(DIRECTION.UP, sprites);
+              tank_player_0.setMoveStatus(1);
+              document.getElementById("moving").play();
+              break;
+            case TANK_ANCTION.S:
+              tank_player_0.move(DIRECTION.DOWN, sprites);
+              tank_player_0.setMoveStatus(1);
+              document.getElementById("moving").play();
+              break;
+            case TANK_ANCTION.A:
+              tank_player_0.move(DIRECTION.LEFT, sprites);
+              tank_player_0.setMoveStatus(1);
+              document.getElementById("moving").play();
+              break;
+            case TANK_ANCTION.D:
+              tank_player_0.move(DIRECTION.RIGHT, sprites);
+              tank_player_0.setMoveStatus(1);
+              document.getElementById("moving").play();
+              break;
+            case TANK_ANCTION.F:
+              tank_player_0.fire(1);
+              break;
+            case 17:
+              tank_player_0.move(DIRECTION.UP, sprites);
+              tank_player_0.setMoveStatus(1);
+              tank_player_0.fire(1);
+              break;
+            case 18:
+              tank_player_0.move(DIRECTION.DOWN, sprites);
+              tank_player_0.setMoveStatus(1);
+              tank_player_0.fire(1);
+              break;
+            case 20:
+              tank_player_0.move(DIRECTION.LEFT, sprites);
+              tank_player_0.setMoveStatus(1);
+              tank_player_0.fire(1);
+              break;
+            case 24:
+              tank_player_0.move(DIRECTION.RIGHT, sprites);
+              tank_player_0.setMoveStatus(1);
+              tank_player_0.fire(1);
+              break;
+          }
+          layer_sprites.drawImageSlice(GAME_RESOURCES, img.offset_x, img.offset_y, img.width, img.height, this.x, this.y, this.direction);
+        };
+
+        tank_player_1.draw = function () {
+          var img = this.getImg();
+          switch (pre_action) {
+            case TANK_ANCTION.UP:
+              tank_player_1.move(DIRECTION.UP, sprites);
+              tank_player_1.setMoveStatus(1);
+              break;
+            case TANK_ANCTION.DOWN:
+              tank_player_1.move(DIRECTION.DOWN, sprites);
+              tank_player_1.setMoveStatus(1);
+              break;
+            case TANK_ANCTION.LEFT:
+              tank_player_1.move(DIRECTION.LEFT, sprites);
+              tank_player_1.setMoveStatus(1);
+              break;
+            case TANK_ANCTION.RIGHT:
+              tank_player_1.move(DIRECTION.RIGHT, sprites);
+              tank_player_1.setMoveStatus(1);
+              break;
+            case TANK_ANCTION.RCTRL:
+              tank_player_1.fire(1);
+              break;
+            case 544:
+              tank_player_1.move(DIRECTION.UP, sprites);
+              tank_player_1.setMoveStatus(1);
+              tank_player_1.fire(1);
+              break;
+            case 576:
+              tank_player_1.move(DIRECTION.DOWN, sprites);
+              tank_player_1.setMoveStatus(1);
+              tank_player_1.fire(1);
+              break;
+            case 640:
+              tank_player_1.move(DIRECTION.LEFT, sprites);
+              tank_player_1.setMoveStatus(1);
+              tank_player_1.fire(1);
+              break;
+            case 768:
+              tank_player_1.move(DIRECTION.RIGHT, sprites);
+              tank_player_1.setMoveStatus(1);
+              tank_player_1.fire(1);
+              break;
+          }
+          
+          layer_sprites.drawImageSlice(GAME_RESOURCES, img.offset_x, img.offset_y, img.width, img.height, this.x, this.y, this.direction);
+        };
+
+        eagle = new Eagle(383, 571, DIRECTION.UP, EAGLE_TYPE.NORMAL);
+
+        for(var t=0; t<20; t++) {
+          var tank = new Tank(new TankConfig({
+            x: 100 + t*30,
+            y: 100,
+            direction: DIRECTION.DOWN,
+            type: TANK_TYPE.ENEMY0,
+            is_player: 0
+          }))
+          tank.star();
+        };
+        
+        for(var i=0; i<=3; i++) {
+          for(var j=0; j<=5; j++) {
+            if((j==2||j==3)&&(i==2||i==3)) {continue}
+            var block = new Block(351 +j*16, 535 +i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+            block_wall.push(block);
+          }
+        };
+        for(var i=0; i<=2; i++) {
+          for(var j=0; j<=2; j++) {
+            var block = new Block(j*16, 140 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_STONE);
+          }
+        };
+        for(var i=0; i<=2; i++) {
+          for(var j=0; j<=2; j++) {
+            var block = new Block(752-10+j*16, 300 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_STONE);
+          }
+        };
+        for(var i=0; i<=2; i++) {
+          for(var j=0; j<=2; j++) {
+            var block = new Block(300-10+j*16,450 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_STONE);
+          }
+        };
+        for(var i=0; i<=2; i++) {
+          for(var j=0; j<=2; j++) {
+            var block = new Block(470-10+j*16,450 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_STONE);
+          }
+        };
+        for(var i=0; i<=2; i++) {
+          for(var j=0; j<=2; j++) {
+            var block = new Block(300-10+j*16,560 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_STONE);
+          }
+        };
+        for(var i=0; i<=2; i++) {
+          for(var j=0; j<=2; j++) {
+            var block = new Block(470-10+j*16,560 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_STONE);
+          }
+        };
+        for(var i=0; i<=12; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((100-20) + j*16, 140 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=5; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((200-20) + j*16, 140 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+
+        for(var i=0; i<=5; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((216-20) + i*16, 140 + j*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=12; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((310-20) + j*16, 140 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=6; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((200-20) + i*16, 235 + j*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=6; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((200-20) + i*16, 315 + j*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=5; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((400-20) + j*16, 140 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=5; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((416-20) + i*16, 140 + j*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=12; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((510-20) + j*16, 140 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=6; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((400-20) + i*16, 235 + j*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=6; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((400-20) + i*16, 315 + j*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=10; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((600-20) + j*16, 140 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=5; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((616-20) + i*16, 140 + j*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=12; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((710-20) + j*16, 140 + i*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+        for(var i=0; i<=6; i++) {
+          for(var j=0; j<=1; j++) {
+            var block = new Block((600-20) + i*16, 315 + j*16, DIRECTION.UP, BLOCK_TYPE.BLOCK_BRICK);
+          }
+        };
+
+        // Monitor keyboard input for players
+        document.addEventListener('keydown', function (e) {
+          e.preventDefault();
+
+          switch(e.keyCode) {
+            case CONTROL_KEY.W:
+              pre_action = pre_action | TANK_ANCTION.W;
+              break;
+            case CONTROL_KEY.S:
+              pre_action = pre_action | TANK_ANCTION.S; 
+              break;
+            case CONTROL_KEY.A:
+              pre_action = pre_action | TANK_ANCTION.A;
+              break;
+            case CONTROL_KEY.D:
+              pre_action = pre_action | TANK_ANCTION.D;
+              break;
+            case CONTROL_KEY.F:
+              pre_action = pre_action | TANK_ANCTION.F;
+              break;
+            case CONTROL_KEY.UP:
+              pre_action = pre_action | TANK_ANCTION.UP;
+              break;
+            case CONTROL_KEY.DOWN:
+              pre_action = pre_action | TANK_ANCTION.DOWN;
+              break;
+            case CONTROL_KEY.LEFT:
+              pre_action = pre_action | TANK_ANCTION.LEFT;
+              break;
+            case CONTROL_KEY.RIGHT:
+              pre_action = pre_action | TANK_ANCTION.RIGHT;
+              break;
+            case CONTROL_KEY.RCTRL:
+              pre_action = pre_action | TANK_ANCTION.RCTRL;
+              break;
+            default:
+              break;
+          }
+        });
+        document.addEventListener("keyup",function(e) {
+          e.preventDefault();
+
+          switch(e.keyCode) {
+            case CONTROL_KEY.W:
+              if(pre_action & TANK_ANCTION.W) {
+                pre_action -= TANK_ANCTION.W;
+              }
+              break;
+            case CONTROL_KEY.S:
+              if(pre_action & TANK_ANCTION.S) {
+                pre_action -= TANK_ANCTION.S;
+              }
+              break;
+            case CONTROL_KEY.A:
+              if(pre_action & TANK_ANCTION.A) {
+                pre_action -= TANK_ANCTION.A; 
+              }
+              break;
+            case CONTROL_KEY.D:
+              if(pre_action & TANK_ANCTION.D) {
+                pre_action -= TANK_ANCTION.D;
+              }
+              break;
+            case CONTROL_KEY.F:
+              if(pre_action & TANK_ANCTION.F) {
+                pre_action -= TANK_ANCTION.F;
+              }
+              break;
+            case CONTROL_KEY.UP:
+              if(pre_action & TANK_ANCTION.UP) {
+                pre_action -= TANK_ANCTION.UP;
+              }
+              break;
+            case CONTROL_KEY.DOWN:
+              if(pre_action & TANK_ANCTION.DOWN) {
+                pre_action -= TANK_ANCTION.DOWN;
+              }
+              break;
+            case CONTROL_KEY.LEFT:
+              if(pre_action & TANK_ANCTION.LEFT) {
+                pre_action -= TANK_ANCTION.LEFT;
+              }
+              break;
+            case CONTROL_KEY.RIGHT:
+              if(pre_action & TANK_ANCTION.RIGHT) {
+                pre_action -= TANK_ANCTION.RIGHT;
+              }
+              break;
+            case CONTROL_KEY.RCTRL:
+              if(pre_action & TANK_ANCTION.RCTRL) {
+                pre_action -= TANK_ANCTION.RCTRL;
+              }
+              break;
+            default:
+              break;
+          }
+        })
+      };
+
+      // 运行
+      this.run = function () {
+
+        if(_game_status === GAMESTATE.RESET) {
+          layer_bg.addEventListener('mousemove', function (e) {
+            layer_bg.clear();
+            layer_bg.drawText('coordinates: ' + e.offsetX + ', ' + e.offsetY, 0, 595);
+          });
+          _game_status = GAMESTATE.RUNNING1PLAYER;
+        }
+        this.redraw();
+      };
+
+      // 重画
+      this.redraw = function () {
+        layer_sprites.clear();
+
+        for(var i in sprites) {
+          if(!sprites[i].alive) {
+            delete sprites[i];
+          }
+          else{
+            var s = sprites[i];
+            if(s instanceof Tank && s.isStared()) {
+              s.star();
+            }
+            if(s instanceof Missile) {
+              if(s.is_from_player) {
+                var p = s.getHeadCoordinates();
+                  for(var sp in sprites) {
+                    if(sprites[sp] instanceof Tank) {
+                      var tank = sprites[sp];
+                      if(!(tank.is_player)) {
+                        if(tank.checkPointOverlap(p)) {
+                          s.alive = 0;
+                          tank.explode();
+                          document.getElementById("eexplosion").play();
+                          enemy_number--;
+                          document.getElementById("enemy_number").setAttribute("value", enemy_number)
+                        }
+                      }
+                    }
+                    else if(sprites[sp] instanceof Eagle) {
+                      if(sprites[sp].checkPointOverlap(p)) {
+                        s.alive = 0;
+                        sprites[sp].explode();
+                      }
+                    }else if(sprites[sp] instanceof Block) {
+                      if(sprites[sp].checkPointOverlap(p)) {
+                        if(sprites[sp].type === BLOCK_TYPE.BLOCK_STONE) {
+                          s.explode();
+                          document.getElementById("steelhit").play();
+                        }else {
+                          s.alive = 0;
+                          sprites[sp].explode();
+                          document.getElementById("brickhit").play();
+                        }
+                      }
+                    }else if(sprites[sp] instanceof Missile) {
+                      if(!sprites[sp].is_from_player) {
+                        if(sprites[sp].checkPointOverlap(p)) {
+                        s.explode();
+                        sprites[sp].explode();
+                        }
+                      }                     
+                    }
+                  }
+                }else {
+                  var p = s.getHeadCoordinates();
+                  for(var sp in sprites) {
+                    if(sprites[sp] instanceof Tank) {
+                      var tank = sprites[sp];
+                      if(tank.is_player) {
+                        if(tank.checkPointOverlap(p)) {
+                          s.alive = 0;
+                          tank.explode();
+                          document.getElementById("eexplosion").play();
+                        }
+                      }
+                    }
+                    else if(sprites[sp] instanceof Eagle) {
+                      if(sprites[sp].checkPointOverlap(p)) {
+                        s.alive = 0;
+                        sprites[sp].explode();
+                      }
+                    }else if(sprites[sp] instanceof Block) {
+                      if(sprites[sp].checkPointOverlap(p)) {
+                      if(sprites[sp].type === BLOCK_TYPE.BLOCK_STONE) {
+                        s.explode();
+                        document.getElementById("steelhit").play();
+                      }else {
+                        s.alive = 0;
+                        sprites[sp].explode();
+                        document.getElementById("brickhit").play();
+                      }
+                    }
+                    }
+                  }
+                }
+              }
+
+            if(s instanceof Tank) {
+              if(s.alive){
+                if(s.isDestroied()) {
+                  s.explode();
+                }
+              }
+            }else if(s instanceof Block) {
+              if(s.alive){
+                if(s.isDestroied()) {
+                  s.explode();
+                }
+              }
+            }else if(s instanceof Eagle) {
+               if(s.alive){
+                if(s.isDestroied()) {
+                  s.explode();
+                  document.getElementById("fexplosion").play();
+                }
+              }
+            }else if(s instanceof Missile) {
+               if(s.alive){
+                if(s.isDestroied()) {
+                  s.explode();
+                }
+              }
+            }
+
+            if(s.alive){
+              s.draw();
+            }
+            else {
+              delete sprites[i];
+            }
+
+          }
+        }
+      };
+    };
+
+    // 页面加载
+    window.onload = function onload() {
+      var bc = new BattleCity();
+      bc.init('container');
+      var lastCalledTime;
+      var fps;
+      var run = function () {
+        bc.run();
+        
+        if(!lastCalledTime) {
+           lastCalledTime = Date.now();
+           window.requestAnimationFrame(run);
+           fps = 0;
+           return;
+        }
+        delta = (Date.now() - lastCalledTime)/1000;
+        lastCalledTime = Date.now();
+        fps = 1/delta;
+        window.requestAnimationFrame(run);
+      };
+      window.requestAnimationFrame(run);
+    };
+  </script>
+</html>
