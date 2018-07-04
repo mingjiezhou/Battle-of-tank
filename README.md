@@ -1,7 +1,7 @@
 ### Battle-of-tank
 # ---
 #### 经典坦克大战 的简陋版，应用技术为原生 Js 、 canvas 、以及面向对象编程方法的应用；
-#### 也是当初第一份前端工作的转正考核项目之一，在此感谢原同事及领导的帮助和指导
+#### 做这个游戏是当初学习 canvas 练手的，因为有一个证券类系统涉及到很多 canvas 操作，后来只初步实现了游戏逻辑，因为忙于公司其他项目，没有在抽时间去完善了。
 
  [在线预览地址](http://mingjiezhou.github.io/Battle-of-tank/battle%20city/index.html)
 
