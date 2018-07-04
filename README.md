@@ -7,4 +7,4 @@
 
 W/上 A/左 X/下 D/右 F/发射
 
-![](/battle%20city/resources/battle.gif)
+![效果图](/battle%20city/resources/battle.gif)
