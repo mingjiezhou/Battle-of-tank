@@ -6,3 +6,5 @@
  [在线预览地址](http://mingjiezhou.github.io/Battle-of-tank/battle%20city/index.html)
 
 W/上 A/左 X/下 D/右 F/发射
+
+![](/battle%20city/resources/battle.gif)
